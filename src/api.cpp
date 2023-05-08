@@ -131,8 +131,8 @@ m_GCThread(),
 m_ClosedSockets()
 {
    // Socket ID MUST start from a random value
-   srand((unsigned int)CTimer::getTime());
-   m_SocketID = 1 + (int)((1 << 30) * (double(rand()) / RAND_MAX));
+   auto seed = (unsigned int)CTimer::getTime();
+   m_SocketID = 1 + (int)((1 << 30) * (double(rand_r(&seed)) / RAND_MAX));
 
    #ifndef WINDOWS
       pthread_mutex_init(&m_ControlLock, NULL);
