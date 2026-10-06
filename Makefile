@@ -7,6 +7,7 @@
 VERSION  = 4.13
 SOVERSION = 0
 SONAME   = libudt.so.$(SOVERSION)
+LIB      = $(SONAME).$(VERSION)
 
 CXX      ?= g++
 AR       ?= ar
@@ -22,9 +23,9 @@ includedir ?= $(prefix)/include
 SRCS = $(wildcard src/*.cpp)
 OBJS = $(SRCS:.cpp=.o)
 
-all: libudt.so.$(VERSION) libudt.a
+all: $(LIB) libudt.a
 
-libudt.so.$(VERSION): $(OBJS)
+$(LIB): $(OBJS)
 	$(CXX) $(CXXFLAGS) $(LDFLAGS) -shared -Wl,-soname,$(SONAME) -o $@ $^ $(LDLIBS)
 
 libudt.a: $(OBJS)
@@ -35,17 +36,18 @@ src/%.o: src/%.cpp $(wildcard src/*.h)
 
 install: all
 	install -d $(DESTDIR)$(libdir) $(DESTDIR)$(includedir)/udt
-	install -m 0755 libudt.so.$(VERSION) $(DESTDIR)$(libdir)/
-	ln -sf libudt.so.$(VERSION) $(DESTDIR)$(libdir)/$(SONAME)
-	ln -sf libudt.so.$(VERSION) $(DESTDIR)$(libdir)/libudt.so
+	install -m 0755 $(LIB) $(DESTDIR)$(libdir)/
+	ln -sf $(LIB) $(DESTDIR)$(libdir)/$(SONAME)
+	ln -sf $(SONAME) $(DESTDIR)$(libdir)/libudt.so
 	install -m 0644 libudt.a $(DESTDIR)$(libdir)/
 	install -m 0644 src/*.h $(DESTDIR)$(includedir)/udt/
 
-check: libudt.so.$(VERSION) tests/loopback.cpp
-	$(CXX) $(CPPFLAGS) $(CXXFLAGS) -Isrc -o tests/loopback tests/loopback.cpp ./libudt.so.$(VERSION) $(LDFLAGS) $(LDLIBS)
+check: $(LIB) tests/loopback.cpp
+	ln -sf $(LIB) $(SONAME)
+	$(CXX) $(CPPFLAGS) $(CXXFLAGS) -Isrc -o tests/loopback tests/loopback.cpp ./$(SONAME) $(LDFLAGS) $(LDLIBS)
 	LD_LIBRARY_PATH=. ./tests/loopback
 
 clean:
-	rm -f $(OBJS) libudt.so.$(VERSION) libudt.a tests/loopback
+	rm -f $(OBJS) $(LIB) $(SONAME) libudt.a tests/loopback
 
 .PHONY: all install check clean
