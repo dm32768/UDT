@@ -100,7 +100,7 @@ void CTimer::rdtsc(uint64_t &x)
       return;
    }
 
-   #if defined(LINUX) && defined(I386)
+   #if defined(__i386__)
       uint32_t lval, hval;
       //asm volatile ("push %eax; push %ebx; push %ecx; push %edx");
       //asm volatile ("xor %eax, %eax; cpuid");
@@ -108,7 +108,7 @@ void CTimer::rdtsc(uint64_t &x)
       //asm volatile ("pop %edx; pop %ecx; pop %ebx; pop %eax");
       x = hval;
       x = (x << 32) | lval;
-   #elif defined(LINUX) && defined(AMD64)
+   #elif defined(__x86_64__)
       uint32_t lval, hval;
       asm ("rdtsc" : "=a" (lval), "=d" (hval));
       x = hval;
@@ -222,9 +222,9 @@ void CTimer::sleepto(uint64_t nexttime)
    while (t < m_ullSchedTime)
    {
       #ifndef NO_BUSY_WAITING
-         #if defined(LINUX) && defined(I386)
+         #if defined(__i386__)
             __asm__ volatile ("pause; rep; nop; nop; nop; nop; nop;");
-         #elif defined(LINUX) && defined(AMD64)
+         #elif defined(__x86_64__)
             __asm__ volatile ("nop; nop; nop; nop; nop;");
          #endif
       #else
