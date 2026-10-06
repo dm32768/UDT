@@ -1,3 +1,5 @@
 src/*.o
 libudt.so.*
 libudt.a
+tests/loopback
+out/

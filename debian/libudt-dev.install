@@ -1,0 +1,3 @@
+usr/include/udt
+usr/lib/*/libudt.so
+usr/lib/*/libudt.a

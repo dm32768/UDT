@@ -1,0 +1,31 @@
+Source: udt
+Section: libs
+Priority: optional
+Maintainer: Dmitry Musatov <dm@dgma.io>
+Build-Depends: debhelper-compat (= 13)
+Standards-Version: 4.7.0
+Rules-Requires-Root: no
+Homepage: https://github.com/dorkbox/UDT
+
+Package: libudt0
+Architecture: amd64
+Multi-Arch: same
+Depends: ${shlibs:Depends}, ${misc:Depends}
+Description: UDP-based data transfer library
+ UDT is a reliable, connection-oriented transport protocol on top of UDP for
+ bulk transfer over long, fast links. It has its own loss recovery and
+ congestion control, which an application can replace with its own.
+ .
+ This is UDT 4.13, the dorkbox tree of UDT 4.11 with its fixes: a flush
+ call, two epoll helpers and a timer that falls back to the system clock. It
+ keeps libudt.so.0, and takes the place of the library of the same name in
+ Debian's udt source package.
+
+Package: libudt-dev
+Section: libdevel
+Architecture: amd64
+Multi-Arch: same
+Depends: libudt0 (= ${binary:Version}), ${misc:Depends}
+Description: UDP-based data transfer library - development files
+ Headers, the static library and the libudt.so link for building programs
+ against UDT. The headers are installed under /usr/include/udt.

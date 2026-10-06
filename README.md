@@ -1,3 +1,21 @@
+# UDT 4.13 for Debian 13
+
+UDT 4.13 from [dorkbox/UDT](https://github.com/dorkbox/UDT), built for Debian 13
+as `libudt0` and `libudt-dev`. `udr` links against it. The soname is
+`libudt.so.0`, and the library has three calls that Debian's 4.11 lacks:
+`UDT::flush` and the epoll helpers `epoll_update_usock` and
+`epoll_verify_usock`. Libraries install to `/usr/lib/<multiarch>` and headers
+to `/usr/include/udt`.
+
+```sh
+make && make check       # libudt.so.0.4.13, libudt.a, and a loopback transfer
+./build-deb.sh           # the .deb files, in out/deb/ (Debian 13 host)
+```
+
+The tree builds with one Makefile, for Linux. The timer picks its assembly from
+the compiler's architecture macros, and `tests/loopback.cpp` runs in every
+package build. The text below is dorkbox's README.
+
 # Breaking the Data Transfer Bottleneck
 
 UDT is a reliable UDP based application level data transport protocol for distributed data intensive applications

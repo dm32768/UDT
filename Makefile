@@ -41,7 +41,11 @@ install: all
 	install -m 0644 libudt.a $(DESTDIR)$(libdir)/
 	install -m 0644 src/*.h $(DESTDIR)$(includedir)/udt/
 
-clean:
-	rm -f $(OBJS) libudt.so.$(VERSION) libudt.a
+check: libudt.so.$(VERSION) tests/loopback.cpp
+	$(CXX) $(CPPFLAGS) $(CXXFLAGS) -Isrc -o tests/loopback tests/loopback.cpp ./libudt.so.$(VERSION) $(LDFLAGS) $(LDLIBS)
+	LD_LIBRARY_PATH=. ./tests/loopback
 
-.PHONY: all install clean
+clean:
+	rm -f $(OBJS) libudt.so.$(VERSION) libudt.a tests/loopback
+
+.PHONY: all install check clean
