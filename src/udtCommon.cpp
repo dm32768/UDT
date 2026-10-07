@@ -47,6 +47,9 @@ written by
    #ifdef MACOSX
       #include <mach/mach_time.h>
    #endif
+   #ifdef LINUX
+      #include <time.h>
+   #endif
 #else
    #include <winsock2.h>
    #include <ws2tcpip.h>
@@ -74,7 +77,17 @@ m_TickLock()
 {
    #ifndef WINDOWS
       pthread_mutex_init(&m_TickLock, NULL);
-      pthread_cond_init(&m_TickCond, NULL);
+      #ifdef LINUX
+         // sleepto() computes its deadline from CLOCK_MONOTONIC, so the
+         // condition variable must wait against the same clock.
+         pthread_condattr_t attr;
+         pthread_condattr_init(&attr);
+         pthread_condattr_setclock(&attr, CLOCK_MONOTONIC);
+         pthread_cond_init(&m_TickCond, &attr);
+         pthread_condattr_destroy(&attr);
+      #else
+         pthread_cond_init(&m_TickCond, NULL);
+      #endif
    #else
       m_TickLock = CreateMutex(NULL, false, NULL);
       m_TickCond = CreateEvent(NULL, false, false, NULL);
@@ -133,51 +146,12 @@ uint64_t CTimer::readCPUFrequency()
    uint64_t frequency = 1;  // 1 tick per microsecond.
 
    #if defined(LINUX)
-      // extract cpu frequency from /proc/cpuinfo
-      float mhz = 0;
-      char str[256] = {};
-      char *p = NULL;
-      int find = 0;
-      FILE * fd = fopen("/proc/cpuinfo", "r");
-
-      if (fd == NULL) {
-         // perror("fopen /proc/cpuinfo");
-      } else {
-         while (fgets(str, 256, fd)) {
-            if (strncmp("cpu MHz", str, sizeof("cpu MHz")-1) == 0) {
-               find = 1;
-               break;
-            }
-         }
-
-         fclose(fd);
-      }
-
-      if (find) {
-         int i=0;
-         while(str[i++] != ':');
-
-         p = str;
-         p+=i;
-
-         sscanf(p, "%f", &mhz);
-         frequency = (uint64_t)mhz;
-         // printf("linux cpu MHz: %f, %lld\n", mhz, frequency);
-      } else {
-         // printf("Warning!!! /proc/cpuinfo cpu MHz unknown\n");
-         // original behavior
-         uint64_t t1, t2;
-
-         rdtsc(t1);
-         timespec ts;
-         ts.tv_sec = 0;
-         ts.tv_nsec = 100000000;
-         nanosleep(&ts, NULL);
-         rdtsc(t2);
-
-         // CPU clocks per microsecond
-         frequency = (t2 - t1) / 100000;
-      }
+      // Linux counts in microseconds of CLOCK_MONOTONIC (getTime()), so one
+      // tick is one microsecond. The TSC is not used: its rate is constant
+      // on modern CPUs while "cpu MHz" in /proc/cpuinfo is the current
+      // scaled frequency, so the two disagree whenever the CPU scales, and
+      // on a VM a calibration over a short sleep is unreliable.
+      m_bUseMicroSecond = true;
    #elif defined(WINDOWS)
       int64_t ccf;
       if (QueryPerformanceFrequency((LARGE_INTEGER *)&ccf))
@@ -228,7 +202,21 @@ void CTimer::sleepto(uint64_t nexttime)
             __asm__ volatile ("nop; nop; nop; nop; nop;");
          #endif
       #else
-         #ifndef WINDOWS
+         #if defined(LINUX)
+            // Wait at most 10 ms, or until tick() wakes us, on the clock the
+            // condition variable was created with.
+            timespec timeout;
+            clock_gettime(CLOCK_MONOTONIC, &timeout);
+            timeout.tv_nsec += 10000000;
+            if (timeout.tv_nsec >= 1000000000)
+            {
+               timeout.tv_sec += 1;
+               timeout.tv_nsec -= 1000000000;
+            }
+            pthread_mutex_lock(&m_TickLock);
+            pthread_cond_timedwait(&m_TickCond, &m_TickLock, &timeout);
+            pthread_mutex_unlock(&m_TickLock);
+         #elif !defined(WINDOWS)
             timeval now;
             timespec timeout;
             gettimeofday(&now, 0);
@@ -278,7 +266,12 @@ uint64_t CTimer::getTime()
    //return x / s_ullCPUFrequency;
    //Specific fix may be necessary if rdtsc is not available either.
 
-   #ifndef WINDOWS
+   #if defined(LINUX)
+      // Monotonic: a step of the wall clock (NTP, date) does not move it.
+      timespec t;
+      clock_gettime(CLOCK_MONOTONIC, &t);
+      return t.tv_sec * 1000000ULL + t.tv_nsec / 1000;
+   #elif !defined(WINDOWS)
       timeval t;
       gettimeofday(&t, 0);
       return t.tv_sec * 1000000ULL + t.tv_usec;

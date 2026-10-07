@@ -12,9 +12,12 @@ make && make check       # libudt.so.0.4.13, libudt.a, and a loopback transfer
 ./build-deb.sh           # the .deb files, in out/deb/ (Debian 13 host)
 ```
 
-The tree builds with one Makefile, for Linux. The timer picks its assembly from
-the compiler's architecture macros, and `tests/loopback.cpp` runs in every
-package build. The text below is dorkbox's README.
+The tree builds with one Makefile, for Linux. On Linux the library keeps time
+with `CLOCK_MONOTONIC` in microseconds; the TSC code paths serve the other
+platforms, where the timer picks its assembly from the compiler's
+architecture macros. `tests/loopback.cpp` runs in every package build: a
+transfer at full speed and one at a capped rate, which checks the timer. The
+text below is dorkbox's README.
 
 # Breaking the Data Transfer Bottleneck
 
